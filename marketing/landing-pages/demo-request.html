@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>See AI Automate 60% of Sprint Work | Agile Intel Demo</title>
+  <meta name="description" content="Watch a 10-minute interactive demo of 37 AI agents that eliminate manual scrum work.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Agile Intel",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "ratingCount": "127" },
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #333; }
+
+    /* Trust Bar */
+    .trust-bar { background: #f8f9fa; padding: 10px 0; border-bottom: 1px solid #e9ecef; }
+    .trust-bar .wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .trust-logos { display: flex; align-items: center; gap: 20px; font-size: 13px; color: #666; }
+    .trust-logos span { font-weight: 600; }
+    .trust-logos .logo { height: 22px; opacity: 0.6; }
+    .gartner-badge { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: #333; }
+    .gartner-badge .stars { color: #f59e0b; }
+
+    /* Hero */
+    .hero { padding: 80px 0; background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); color: #fff; }
+    .hero .wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
+    .hero h1 { font-size: 44px; font-weight: 800; line-height: 1.15; margin-bottom: 20px; }
+    .hero .sub { font-size: 19px; line-height: 1.6; opacity: 0.95; margin-bottom: 28px; }
+    .benefits li { font-size: 17px; margin-bottom: 10px; list-style: none; }
+
+    /* Form */
+    .form-card { background: #fff; padding: 32px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); color: #333; }
+    .form-card h3 { font-size: 22px; margin-bottom: 20px; }
+    .form-card input, .form-card select { width: 100%; padding: 13px; margin-bottom: 14px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 15px; }
+    .form-card input:focus, .form-card select:focus { outline: none; border-color: #2563eb; }
+    .btn-primary { width: 100%; padding: 15px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-size: 17px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+    .btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(37,99,235,0.4); }
+    .privacy { margin-top: 14px; font-size: 12px; color: #9ca3af; text-align: center; }
+    .privacy a { color: #2563eb; text-decoration: none; }
+
+    /* Social Proof */
+    .social { padding: 80px 0; background: #f8f9fa; }
+    .social .wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+    .social h2 { text-align: center; font-size: 32px; margin-bottom: 50px; }
+    .testimonials { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+    .test-card { background: #fff; padding: 28px; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .test-card .stars { color: #f59e0b; font-size: 18px; margin-bottom: 14px; }
+    .test-card p { font-size: 15px; line-height: 1.6; margin-bottom: 16px; }
+    .test-card .author { font-size: 14px; }
+    .test-card .author strong { display: block; }
+    .test-card .author span { color: #6b7280; }
+
+    /* Features */
+    .features { padding: 80px 0; }
+    .features .wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+    .features h2 { text-align: center; font-size: 32px; margin-bottom: 50px; }
+    .feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 30px; }
+    .feat-card { text-align: center; padding: 24px; }
+    .feat-card .icon { font-size: 40px; margin-bottom: 14px; }
+    .feat-card h3 { font-size: 18px; margin-bottom: 10px; }
+    .feat-card p { font-size: 14px; color: #6b7280; line-height: 1.5; }
+
+    /* CTA Band */
+    .cta-band { padding: 60px 0; background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); color: #fff; text-align: center; }
+    .cta-band h2 { font-size: 32px; margin-bottom: 12px; }
+    .cta-band p { font-size: 18px; margin-bottom: 28px; opacity: 0.9; }
+    .cta-band .btn-light { display: inline-block; padding: 16px 40px; background: #fff; color: #2563eb; border-radius: 6px; font-size: 17px; font-weight: 700; text-decoration: none; transition: all 0.2s; }
+    .cta-band .btn-light:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    .cta-band .guarantee { margin-top: 14px; font-size: 14px; opacity: 0.85; }
+
+    /* Footer */
+    footer { padding: 30px 0; background: #1f2937; color: #fff; text-align: center; font-size: 13px; }
+    footer a { color: #93c5fd; text-decoration: none; margin: 0 12px; }
+
+    @media (max-width: 768px) {
+      .hero .wrap { grid-template-columns: 1fr; gap: 30px; }
+      .hero h1 { font-size: 30px; }
+      .testimonials { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Trust Bar -->
+  <div class="trust-bar">
+    <div class="wrap">
+      <div class="trust-logos">
+        <span>Trusted by teams at:</span>
+        <span class="logo">IBM</span>
+        <span class="logo">Microsoft</span>
+        <span class="logo">Salesforce</span>
+        <span class="logo">Oracle</span>
+      </div>
+      <div class="gartner-badge">
+        <span class="stars">★★★★★</span> 4.8/5 (127 reviews on Gartner)
+      </div>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <h1>See How AI Automates 60% of Sprint Management Work</h1>
+        <p class="sub">Watch a 10-minute interactive demo of 37 AI agents that eliminate manual scrum tasks. No signup required.</p>
+        <ul class="benefits">
+          <li>✅ Reduce sprint planning time by 40%</li>
+          <li>✅ Automate status updates and retrospectives</li>
+          <li>✅ AI-powered risk prediction and code review</li>
+          <li>✅ Bi-directional Jira sync included</li>
+        </ul>
+      </div>
+      <div class="form-card">
+        <h3>View Interactive Demo</h3>
+        <form id="demo-form" action="/api/leads/capture" method="POST">
+          <input type="email" name="email" placeholder="Work Email *" required>
+          <input type="text" name="company" placeholder="Company Name *" required>
+          <select name="role" required>
+            <option value="">Your Role *</option>
+            <option>CTO / VP Engineering</option>
+            <option>Engineering Manager</option>
+            <option>Scrum Master</option>
+            <option>Product Manager</option>
+            <option>Developer</option>
+            <option>Other</option>
+          </select>
+          <input type="hidden" name="source" value="demo_request_landing">
+          <input type="hidden" name="page" value="/demo-request">
+          <button type="submit" class="btn-primary">View Demo Now →</button>
+        </form>
+        <p class="privacy">By submitting, you agree to our <a href="/privacy">Privacy Policy</a>. No credit card required.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Social Proof -->
+  <section class="social">
+    <div class="wrap">
+      <h2>Trusted by 2,500+ Agile Teams</h2>
+      <div class="testimonials">
+        <div class="test-card">
+          <div class="stars">★★★★★</div>
+          <p>"Reduced our sprint planning time by 40%. The AI agents are game-changing."</p>
+          <div class="author"><strong>Sarah Chen</strong><span>CTO, Fortune 500 Tech Company</span></div>
+        </div>
+        <div class="test-card">
+          <div class="stars">★★★★★</div>
+          <p>"Finally, a FedRAMP-compliant agile tool that actually works for government teams."</p>
+          <div class="author"><strong>Marcus Johnson</strong><span>CISO, Federal Agency</span></div>
+        </div>
+        <div class="test-card">
+          <div class="stars">★★★★★</div>
+          <p>"The Jira integration is seamless. Our team adopted it in less than a week."</p>
+          <div class="author"><strong>Alex Rivera</strong><span>VP Product, SaaS Company</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+    <div class="wrap">
+      <h2>What You'll See in the Demo</h2>
+      <div class="feat-grid">
+        <div class="feat-card">
+          <div class="icon">🤖</div>
+          <h3>37 AI Agents</h3>
+          <p>Sprint health monitoring, risk prediction, code review, and more — fully automated.</p>
+        </div>
+        <div class="feat-card">
+          <div class="icon">🔄</div>
+          <h3>Jira Integration</h3>
+          <p>Bi-directional sync with real-time data. Works with your existing setup.</p>
+        </div>
+        <div class="feat-card">
+          <div class="icon">📊</div>
+          <h3>Power BI Analytics</h3>
+          <p>Executive dashboards with velocity, team health, and predictive insights.</p>
+        </div>
+        <div class="feat-card">
+          <div class="icon">🔒</div>
+          <h3>FedRAMP Ready</h3>
+          <p>NIST 800-53 compliant. ATO documentation included for government buyers.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-band">
+    <h2>Ready to See AI Transform Agile Management?</h2>
+    <p>Join 2,500+ teams using Agile Intel to automate their sprints.</p>
+    <a href="#demo-form" class="btn-light">View Demo Now →</a>
+    <p class="guarantee">✅ No credit card · ✅ 10-minute interactive demo</p>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>© 2025 CloudOneSoftware LLC. All rights reserved.</p>
+    <div><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/security">Security</a><a href="mailto:support@cloudonesoftware.com">Contact</a></div>
+  </footer>
+
+  <script>
+    document.getElementById('demo-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const form = e.target;
+      const data = Object.fromEntries(new FormData(form));
+      try {
+        const res = await fetch('/api/leads/capture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (res.ok) {
+          window.location.href = '/demo?type=core_platform&ref=landing';
+        }
+      } catch (err) {
+        console.error('Form submission error:', err);
+      }
+    });
+  </script>
+</body>
+</html>
