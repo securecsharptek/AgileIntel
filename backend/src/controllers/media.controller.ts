@@ -16,12 +16,22 @@ export class MediaController {
   }
 
   async getAssets(req: Request, res: Response): Promise<void> {
-    try { res.json({ webinarId: req.params.webinarId, assets: [] }); }
+    try {
+      const { webinarId } = req.params;
+      const assets = await this.ffmpegService.getWebinarAssets(webinarId);
+      res.json({ webinarId, assets });
+    }
     catch (error: any) { res.status(500).json({ error: error.message }); }
   }
 
   async generateThumbnail(req: Request, res: Response): Promise<void> {
-    try { res.json({ success: true, thumbnailUrl: '' }); }
+    try {
+      const { sourceBlob, webinarId, timestamp } = req.body;
+      if (!sourceBlob || !webinarId) { res.status(400).json({ error: 'sourceBlob and webinarId required' }); return; }
+
+      const thumbnailUrl = await this.ffmpegService.generateSingleThumbnail(sourceBlob, webinarId, timestamp || '00:00:00');
+      res.json({ success: true, thumbnailUrl });
+    }
     catch (error: any) { res.status(500).json({ error: error.message }); }
   }
 }
