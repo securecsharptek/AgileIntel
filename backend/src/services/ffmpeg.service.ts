@@ -40,7 +40,17 @@ export class FFmpegService {
     this.tempDir = this.tempDir.replace(/\\/g, '/');
     ffmpeg.setFfmpegPath(this.ffmpegPath);
     if (!fs.existsSync(this.tempDir)) fs.mkdirSync(this.tempDir, { recursive: true });
-    console.log(`[FFmpeg] tempDir resolved to: ${this.tempDir}`);
+    
+    // Test write permissions
+    const testFile = path.join(this.tempDir, '.test-write');
+    try {
+      fs.writeFileSync(testFile, 'test');
+      fs.unlinkSync(testFile);
+      console.log(`[FFmpeg] ✅ tempDir resolved to: ${this.tempDir} (writable)`);
+    } catch (error: any) {
+      console.error(`[FFmpeg] ❌ tempDir not writable: ${this.tempDir}`, error.message);
+      throw new Error(`Temp directory not writable: ${this.tempDir}`);
+    }
   }
 
   /** Convert a path to forward-slash form FFmpeg can understand on Windows.
@@ -57,20 +67,55 @@ export class FFmpegService {
 
   async processWebinarRecording(
     sourceBlob: string, webinarId: string,
-    metadata: { title: string; presenter: string; date: string }
+    metadata?: { title?: string; presenter?: string; date?: string }
   ): Promise<{ assets: MediaAsset[] }> {
     const localSource = this.p(path.join(this.tempDir, `${webinarId}-raw.mp4`));
     const assets: MediaAsset[] = [];
 
-    await this.downloadBlob(sourceBlob, localSource);
+    // Step 1: Download source blob
+    console.log(`[FFmpeg] Step 1: Downloading source blob "${sourceBlob}"...`);
+    try {
+      await this.downloadBlob(sourceBlob, localSource);
+    } catch (error: any) {
+      console.error(`[FFmpeg] ❌ Download failed:`, error.message);
+      throw new Error(`Failed to download source blob "${sourceBlob}": ${error.message}`);
+    }
+
+    // Validate downloaded file
+    if (!fs.existsSync(localSource)) {
+      throw new Error(`Downloaded file not found: ${localSource}`);
+    }
+    const fileStats = fs.statSync(localSource);
+    console.log(`[FFmpeg] ✅ Downloaded ${fileStats.size} bytes to ${localSource}`);
+    if (fileStats.size < 1000) {
+      throw new Error(`Downloaded file too small (${fileStats.size} bytes) - likely corrupt or empty`);
+    }
 
     const brandedSource = this.p(path.join(this.tempDir, `${webinarId}-branded.mp4`));
 
-    // 1. Transcode main file first (scales 4K to 1080p, standardizes format)
-    assets.push(await this.transcodeWithBranding(localSource, webinarId, metadata));
+    // Step 2: Transcode main file first (scales 4K to 1080p, standardizes format)
+    console.log(`[FFmpeg] Step 2: Transcoding to 1080p with branding...`);
+    try {
+      assets.push(await this.transcodeWithBranding(localSource, webinarId, metadata || {}));
+    } catch (error: any) {
+      console.error(`[FFmpeg] ❌ Transcoding failed:`, error.message);
+      this.cleanupTemp(webinarId);
+      throw new Error(`Transcoding failed: ${error.message}`);
+    }
 
-    // 2. Run everything else in parallel USING the transcoded 1080p file as the source.
+    // Validate transcoded file before proceeding
+    if (!fs.existsSync(brandedSource)) {
+      throw new Error(`Transcoded file not found: ${brandedSource}`);
+    }
+    const brandedStats = fs.statSync(brandedSource);
+    console.log(`[FFmpeg] ✅ Transcoded file created: ${brandedStats.size} bytes`);
+    if (brandedStats.size < 1000) {
+      throw new Error(`Transcoded file too small (${brandedStats.size} bytes) - transcoding likely failed`);
+    }
+
+    // Step 3: Run everything else in parallel USING the transcoded 1080p file as the source.
     // This is 10x faster than reading the raw 4K source 5 separate times!
+    console.log(`[FFmpeg] Step 3: Generating derivative assets in parallel...`);
     const [hls, clips, audio, thumbs, teaser] = await Promise.all([
       this.generateHLS(brandedSource, webinarId),
       this.generateHighlightClips(brandedSource, webinarId),
@@ -413,13 +458,36 @@ export class FFmpegService {
       // Strip the container URL prefix (plus the trailing slash) to get the blob name
       relativePath = blobPath.replace(containerUrl.replace(/\/?$/, '/'), '');
     }
-    console.log(`[FFmpeg] Downloading blob: "${relativePath}" → ${localPath}`);
+    console.log(`[FFmpeg] Downloading blob from container "${mediaContainer.containerName}": "${relativePath}" → ${localPath}`);
     const blockBlob = mediaContainer.getBlockBlobClient(relativePath);
+    
+    console.log(`[FFmpeg] Checking if blob exists: ${relativePath}`);
     const exists = await blockBlob.exists();
     if (!exists) {
-      throw new Error(`Source blob does not exist in container: "${relativePath}"`);
+      // List available blobs to help debug
+      console.error(`[FFmpeg] ❌ Blob not found: "${relativePath}"`);
+      console.error(`[FFmpeg] Container: ${mediaContainer.containerName}`);
+      console.error(`[FFmpeg] Attempting to list available blobs in container...`);
+      try {
+        const iter = mediaContainer.listBlobsFlat({ prefix: relativePath.split('/')[0] });
+        let count = 0;
+        for await (const blob of iter) {
+          console.error(`[FFmpeg]   - ${blob.name}`);
+          count++;
+          if (count >= 10) break; // Limit to 10 blobs
+        }
+        if (count === 0) {
+          console.error(`[FFmpeg] No blobs found with prefix "${relativePath.split('/')[0]}"`);
+        }
+      } catch (listError: any) {
+        console.error(`[FFmpeg] Could not list blobs:`, listError.message);
+      }
+      throw new Error(`Source blob does not exist in container "${mediaContainer.containerName}": "${relativePath}"`);
     }
+    
+    console.log(`[FFmpeg] ✅ Blob exists, downloading...`);
     await blockBlob.downloadToFile(localPath);
+    console.log(`[FFmpeg] ✅ Download complete`);
   }
 
   cleanupTemp(id: string): void {

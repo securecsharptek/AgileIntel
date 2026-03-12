@@ -7,6 +7,7 @@ import debugRoutes from './routes/debug.routes';
 import mediaRoutes from './routes/media.routes'; // [v3.0] FFmpeg
 import copilotRoutes from './routes/copilot.routes'; // [v3.0] Copilot
 import { runStartupDiagnostics } from './utils/configLogger'; // [v3.0] Startup health checks
+import './services/queue.service'; // [v3.0] Initialize background job queue
 const app = express();
 const PORT = process.env.PORT || 5000;
 

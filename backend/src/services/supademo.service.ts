@@ -89,9 +89,9 @@ export class SupademoService {
 
       const engagementId = insertResult.recordset[0].EngagementId;
 
-      // Calculate lead score if we have metrics
+      // Calculate lead score if we have metrics (v3.0: use enhanced 4D scoring)
       if (engagement.timeSpent || engagement.completionPercentage || engagement.stepsViewed) {
-        await this.calculateLeadScore(engagementId, engagement, isGov);
+        await this.calculateEnhancedLeadScore(engagementId, engagement, isGov);
       }
 
       // Sync to HubSpot if email provided
@@ -124,7 +124,7 @@ export class SupademoService {
     const completionScore = engagement.completionPercentage || 0;                       // Already 0-100
     const stepsScore = Math.min(((engagement.stepsViewed || 0) / 10) * 100, 100);      // 10 steps = max
 
-    // Weighted score
+    // Weighted score (v2.0 - 3 dimensions)
     const score = Math.round(
       timeScore * timeWeight +
       completionScore * completionWeight +
@@ -159,6 +159,134 @@ export class SupademoService {
     };
   }
 
+  /**
+   * v3.0: Enhanced lead scoring with 4th dimension (video engagement)
+   * Automatically queries VideoEngagements table for prospect's video data
+   * Falls back to 3D scoring if no video engagement data exists
+   */
+  async calculateEnhancedLeadScore(
+    engagementId: string,
+    engagement: DemoEngagement,
+    isGovernment: boolean
+  ): Promise<LeadScore> {
+    const pool = await poolPromise;
+    const { 
+      timeWeightV3, completionWeightV3, stepsWeightV3, videoWeight,
+      timeWeight, completionWeight, stepsWeight,
+      highIntentThreshold, govHighIntentThreshold 
+    } = supademoConfig.leadScoring;
+
+    // Normalize demo engagement metrics to 0-100 scale
+    const timeScore = Math.min(((engagement.timeSpent || 0) / 600) * 100, 100);       // 10 min = max
+    const completionScore = engagement.completionPercentage || 0;                       // Already 0-100
+    const stepsScore = Math.min(((engagement.stepsViewed || 0) / 10) * 100, 100);      // 10 steps = max
+
+    // Query video engagement data for this prospect
+    let videoScore = 0;
+    let hasVideoData = false;
+
+    if (engagement.prospectEmail) {
+      try {
+        const videoResult = await pool.request()
+          .input('email', sql.NVarChar, engagement.prospectEmail)
+          .query(`
+            SELECT 
+              AVG(WatchPercentage) as AvgWatchPercentage,
+              SUM(RewatchCount) as TotalRewatchCount,
+              COUNT(DISTINCT AssetId) as UniqueAssetsViewed,
+              MAX(WatchDuration) as MaxWatchDuration
+            FROM VideoEngagements
+            WHERE ProspectEmail = @email
+          `);
+
+        if (videoResult.recordset.length > 0) {
+          const videoData = videoResult.recordset[0];
+          
+          // Only use video data if the prospect has actually watched videos
+          if (videoData.UniqueAssetsViewed > 0) {
+            hasVideoData = true;
+            
+            // Video engagement formula: watch% × rewatch factor × engagement breadth
+            // - AvgWatchPercentage: direct (0-100)
+            // - RewatchCount: bonus for re-engagement (capped at +20%)
+            // - UniqueAssetsViewed: bonus for breadth (capped at +10%)
+            const watchScore = videoData.AvgWatchPercentage || 0;
+            const rewatchBonus = Math.min((videoData.TotalRewatchCount || 0) * 5, 20); // +5% per rewatch, max +20%
+            const breadthBonus = Math.min((videoData.UniqueAssetsViewed - 1) * 5, 10); // +5% per extra asset, max +10%
+            
+            videoScore = Math.min(watchScore + rewatchBonus + breadthBonus, 100);
+            
+            console.log(`[v3.0] Video engagement detected for ${engagement.prospectEmail}:`, {
+              watchScore,
+              rewatchBonus,
+              breadthBonus,
+              videoScore,
+              assets: videoData.UniqueAssetsViewed
+            });
+          }
+        }
+      } catch (error) {
+        console.error('[SupademoService] Error querying video engagements:', error);
+        // Non-blocking: continue with 3D scoring if video query fails
+      }
+    }
+
+    // Calculate final score with appropriate weights
+    let score: number;
+    const breakdown: { timeScore: number; completionScore: number; stepsScore: number; videoScore?: number } = {
+      timeScore,
+      completionScore,
+      stepsScore,
+    };
+
+    if (hasVideoData) {
+      // v3.0: 4-dimension scoring with adjusted weights
+      score = Math.round(
+        timeScore * timeWeightV3 +
+        completionScore * completionWeightV3 +
+        stepsScore * stepsWeightV3 +
+        videoScore * videoWeight
+      );
+      breakdown.videoScore = videoScore;
+      console.log(`[v3.0] 4D Lead Score: ${score}/100 (includes video engagement)`);
+    } else {
+      // v2.0: 3-dimension scoring (backward compatible)
+      score = Math.round(
+        timeScore * timeWeight +
+        completionScore * completionWeight +
+        stepsScore * stepsWeight
+      );
+      console.log(`[v2.0] 3D Lead Score: ${score}/100 (no video data available)`);
+    }
+
+    const threshold = isGovernment ? govHighIntentThreshold : highIntentThreshold;
+    const isHighIntent = score >= threshold;
+
+    // Persist
+    await pool.request()
+      .input('engagementId', sql.UniqueIdentifier, engagementId)
+      .input('leadScore', sql.Int, score)
+      .input('isHighIntent', sql.Bit, isHighIntent)
+      .query(`
+        UPDATE DemoEngagements
+        SET LeadScore = @leadScore, IsHighIntent = @isHighIntent
+        WHERE EngagementId = @engagementId
+      `);
+
+    // Trigger high-intent flow
+    if (isHighIntent) {
+      await this.handleHighIntentLead(engagementId, engagement, score, isGovernment);
+    }
+
+    return {
+      engagementId,
+      score,
+      isHighIntent,
+      isGovernmentProspect: isGovernment,
+      breakdown,
+    };
+  }
+
   // ---------------------------------------------------------------------------
   // HIGH-INTENT LEAD HANDLING
   // ---------------------------------------------------------------------------
@@ -171,30 +299,35 @@ export class SupademoService {
   ): Promise<void> {
     console.log(`🔥 High-intent lead: ${engagement.prospectEmail} (Score: ${score}${isGovernment ? ', GOV' : ''})`);
 
-    // Create HubSpot follow-up task
-    if (supademoConfig.hubspot.createTaskForHighIntent && engagement.prospectEmail) {
-      const specialist = isGovernment ? 'federal sales specialist' : 'sales representative';
-      await this.hubspotService.createTask({
-        email: engagement.prospectEmail,
-        taskType: 'CALL',
-        subject: `${isGovernment ? '🏛️ GOV ' : ''}High-intent demo lead: ${engagement.prospectName || engagement.prospectEmail}`,
-        notes: [
-          `Prospect engaged with demo (Score: ${score}/100)`,
-          `Company: ${engagement.companyName || 'Unknown'}`,
-          `Demo: ${engagement.supademoId}`,
-          isGovernment ? 'GOVERNMENT PROSPECT — Route to federal team' : '',
-          `Follow up within 24 hours.`,
-        ].filter(Boolean).join('\n'),
-        dueDate: new Date(Date.now() + 86400000), // +24 hours
-        priority: score >= 75 ? 'HIGH' : 'MEDIUM',
-      });
+    // Create HubSpot follow-up task (non-blocking)
+    if (supademoConfig.hubspot.enabled && supademoConfig.hubspot.createTaskForHighIntent && engagement.prospectEmail) {
+      try {
+        const specialist = isGovernment ? 'federal sales specialist' : 'sales representative';
+        await this.hubspotService.createTask({
+          email: engagement.prospectEmail,
+          taskType: 'CALL',
+          subject: `${isGovernment ? '🏛️ GOV ' : ''}High-intent demo lead: ${engagement.prospectName || engagement.prospectEmail}`,
+          notes: [
+            `Prospect engaged with demo (Score: ${score}/100)`,
+            `Company: ${engagement.companyName || 'Unknown'}`,
+            `Demo: ${engagement.supademoId}`,
+            isGovernment ? 'GOVERNMENT PROSPECT — Route to federal team' : '',
+            `Follow up within 24 hours.`,
+          ].filter(Boolean).join('\n'),
+          dueDate: new Date(Date.now() + 86400000), // +24 hours
+          priority: score >= 75 ? 'HIGH' : 'MEDIUM',
+        });
 
-      // Add to appropriate list
-      const listId = isGovernment
-        ? supademoConfig.hubspot.govProspectsListId
-        : supademoConfig.hubspot.hotLeadsListId;
-      if (listId) {
-        await this.hubspotService.addToList(engagement.prospectEmail, listId);
+        // Add to appropriate list
+        const listId = isGovernment
+          ? supademoConfig.hubspot.govProspectsListId
+          : supademoConfig.hubspot.hotLeadsListId;
+        if (listId) {
+          await this.hubspotService.addToList(engagement.prospectEmail, listId);
+        }
+      } catch (error: any) {
+        console.error('[SupademoService] HubSpot integration error (non-blocking):', error.message);
+        // Continue - HubSpot failures should not prevent lead scoring
       }
     }
 

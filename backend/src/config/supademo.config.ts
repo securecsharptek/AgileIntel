@@ -57,9 +57,17 @@ export const supademoConfig = {
 
   // Lead scoring weights
   leadScoring: {
+    // v2.0 (3-dimension) weights - used when no video data available
     timeWeight: 0.4,         // 40% — time spent viewing
     completionWeight: 0.35,  // 35% — percentage of demo completed
     stepsWeight: 0.25,       // 25% — number of steps interacted with
+    
+    // v3.0 (4-dimension) weights - used when video engagement data exists
+    timeWeightV3: 0.30,      // 30% — time spent viewing (reduced from 40%)
+    completionWeightV3: 0.25, // 25% — percentage of demo completed (reduced from 35%)
+    stepsWeightV3: 0.20,     // 20% — number of steps interacted with (reduced from 25%)
+    videoWeight: 0.25,       // 25% — video engagement score (NEW in v3.0)
+    
     highIntentThreshold: 50, // score >= 50 triggers high-intent flow
     govHighIntentThreshold: 70, // higher bar for government prospects
   },

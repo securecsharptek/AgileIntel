@@ -29,6 +29,7 @@ export interface LeadScore {
     timeScore: number;
     completionScore: number;
     stepsScore: number;
+    videoScore?: number;       // v3.0: video engagement dimension (optional)
   };
 }
 

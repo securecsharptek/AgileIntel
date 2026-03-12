@@ -24,7 +24,7 @@ router.get('/demos/:demoId/analytics', (req, res) => controller.getAnalytics(req
 
 // Health check
 router.get('/health', (_req, res) => {
-  res.json({ status: 'healthy', service: 'supademo-integration', version: '2.0.0' });
+  res.json({ status: 'healthy', service: 'supademo-integration', version: '3.0.0' });
 });
 
 export default router;

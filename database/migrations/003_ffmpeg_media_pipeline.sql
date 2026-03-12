@@ -1,5 +1,9 @@
 -- Migration 003: FFmpeg Media Pipeline Tables — Agile Intel v3.0
-CREATE TABLE MediaAssets (
+-- Idempotent: Safe to re-run
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'MediaAssets')
+BEGIN
+  CREATE TABLE MediaAssets (
     AssetId UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
     WebinarId NVARCHAR(100) NOT NULL,
     AssetType NVARCHAR(50) NOT NULL,
@@ -11,8 +15,13 @@ CREATE TABLE MediaAssets (
     ProcessedAt DATETIME2 DEFAULT GETUTCDATE(),
     INDEX IX_MediaAssets_WebinarId (WebinarId),
     INDEX IX_MediaAssets_AssetType (AssetType)
-);
-CREATE TABLE VideoEngagements (
+  );
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'VideoEngagements')
+BEGIN
+  CREATE TABLE VideoEngagements (
     VideoEngagementId UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
     AssetId UNIQUEIDENTIFIER FOREIGN KEY REFERENCES MediaAssets(AssetId),
     ProspectEmail NVARCHAR(255),
@@ -24,8 +33,13 @@ CREATE TABLE VideoEngagements (
     ViewedAt DATETIME2 DEFAULT GETUTCDATE(),
     INDEX IX_VideoEng_Email (ProspectEmail),
     INDEX IX_VideoEng_AssetId (AssetId)
-);
-CREATE TABLE ProcessingJobs (
+  );
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ProcessingJobs')
+BEGIN
+  CREATE TABLE ProcessingJobs (
     JobId UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
     WebinarId NVARCHAR(100) NOT NULL,
     Status NVARCHAR(30) DEFAULT 'queued',
@@ -37,5 +51,8 @@ CREATE TABLE ProcessingJobs (
     CompletedAt DATETIME2 NULL,
     INDEX IX_Jobs_Status (Status),
     INDEX IX_Jobs_WebinarId (WebinarId)
-);
-PRINT 'Migration 003: FFmpeg media pipeline tables created.';
+  );
+END;
+GO
+
+PRINT 'Migration 003: FFmpeg media pipeline tables created or verified.';
